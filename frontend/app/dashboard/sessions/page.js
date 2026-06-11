@@ -95,8 +95,8 @@ export default function SessionsPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
-  const fetchSessions = useCallback(async () => {
-    setLoading(true);
+  const fetchSessions = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const params = new URLSearchParams({ page, limit: 20 });
       if (statusFilter) params.set('status', statusFilter);
@@ -108,12 +108,14 @@ export default function SessionsPage() {
     } catch (err) {
       console.error('Failed to fetch sessions:', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [page, statusFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     fetchSessions();
+    const interval = setInterval(() => fetchSessions(true), 10000);
+    return () => clearInterval(interval);
   }, [fetchSessions]);
 
   // Reset page on filter change

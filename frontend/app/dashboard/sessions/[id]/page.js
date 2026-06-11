@@ -270,7 +270,7 @@ export default function SessionDetailPage() {
     setLoading(true);
     try {
       const res = await api.get(`/sessions/${sessionId}`);
-      setSession(res.session || res);
+      setSession(res.data || res.session || res);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -454,7 +454,7 @@ export default function SessionDetailPage() {
           <div style={styles.infoRow}>
             <span style={styles.infoLabel}>Tanggal Pinjam</span>
             <span style={{ fontSize: '13px', fontWeight: 500 }}>
-              {formatDate(session?.created_at)}
+              {formatDate(session?.borrowed_at)}
             </span>
           </div>
           <div style={styles.infoRowLast}>

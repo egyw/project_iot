@@ -139,7 +139,7 @@ export default function UserDetailPage() {
     setLoading(true);
     try {
       const userData = await api.get(`/users/${userId}`);
-      setUser(userData.user || userData);
+      setUser(userData.data || userData.user || userData);
 
       // Fetch sessions for this user
       try {
@@ -215,7 +215,7 @@ export default function UserDetailPage() {
 
   const sessionColumns = [
     {
-      key: 'created_at',
+      key: 'borrowed_at',
       label: 'Tanggal',
       render: (val) => formatDate(val),
     },
