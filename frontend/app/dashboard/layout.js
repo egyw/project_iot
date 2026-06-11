@@ -7,33 +7,33 @@ import { isLoggedIn, removeToken } from '@/lib/auth';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: '📊' },
-  { href: '/users', label: 'Users', icon: '👥' },
-  { href: '/assets', label: 'Assets', icon: '📦' },
-  { href: '/assets/types', label: 'Asset Types', icon: '🏷️' },
-  { href: '/sessions', label: 'Sessions', icon: '📋' },
-  { href: '/settings', label: 'Settings', icon: '⚙️' },
+  { href: '/dashboard/users', label: 'Users', icon: '👥' },
+  { href: '/dashboard/assets', label: 'Assets', icon: '📦' },
+  { href: '/dashboard/assets/types', label: 'Asset Types', icon: '🏷️' },
+  { href: '/dashboard/sessions', label: 'Sessions', icon: '📋' },
+  { href: '/dashboard/settings', label: 'Settings', icon: '⚙️' },
 ];
 
 const pageTitles = {
   '/dashboard': 'Dashboard Overview',
-  '/users': 'User Management',
-  '/assets': 'Asset Management',
-  '/assets/types': 'Asset Types',
-  '/sessions': 'Borrow Sessions',
-  '/settings': 'Settings',
+  '/dashboard/users': 'User Management',
+  '/dashboard/assets': 'Asset Management',
+  '/dashboard/assets/types': 'Asset Types',
+  '/dashboard/sessions': 'Borrow Sessions',
+  '/dashboard/settings': 'Settings',
 };
 
 function getPageTitle(pathname) {
   if (pageTitles[pathname]) return pageTitles[pathname];
-  if (pathname.startsWith('/users/')) return 'User Detail';
-  if (pathname.startsWith('/sessions/')) return 'Session Detail';
+  if (pathname.startsWith('/dashboard/users/')) return 'User Detail';
+  if (pathname.startsWith('/dashboard/sessions/')) return 'Session Detail';
   return 'SmartLab Admin';
 }
 
 function isNavActive(href, pathname) {
   if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/';
-  if (href === '/assets/types') return pathname === '/assets/types';
-  if (href === '/assets') return pathname === '/assets';
+  if (href === '/dashboard/assets/types') return pathname === '/dashboard/assets/types';
+  if (href === '/dashboard/assets') return pathname === '/dashboard/assets';
   return pathname.startsWith(href);
 }
 

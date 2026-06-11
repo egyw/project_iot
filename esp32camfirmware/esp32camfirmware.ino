@@ -193,7 +193,15 @@ void connectMQTT() {
 void captureAndUpload(const char* sessionToken) {
   Serial.println("[UPLOAD] Capturing photo...");
 
-  // Ambil frame buffer dari kamera
+  // ---------- FLUSH FRAME BUFFER ----------
+  // Karena fb_count = 2, frame yang ada di buffer kemungkinan adalah gambar lama.
+  // Buang 1-2 frame awal agar gambar yang didapat benar-benar "real-time".
+  for (int i = 0; i < 2; i++) {
+    camera_fb_t* old_fb = esp_camera_fb_get();
+    if (old_fb) esp_camera_fb_return(old_fb);
+  }
+
+  // Ambil frame buffer dari kamera (REAL FRAME)
   camera_fb_t* fb = esp_camera_fb_get();
   if (!fb) {
     Serial.println("[UPLOAD] Camera capture FAILED (fb is null)");

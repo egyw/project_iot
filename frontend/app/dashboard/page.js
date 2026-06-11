@@ -97,12 +97,14 @@ export default function DashboardPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [statsData, activityData] = await Promise.all([
+      const [statsRes, activityRes] = await Promise.all([
         api.get('/stats/overview'),
         api.get('/stats/activity?limit=10'),
       ]);
-      setStats(statsData);
-      setActivities(activityData.activities || activityData);
+      // Backend wraps responses in { data: ... }
+      setStats(statsRes.data || statsRes);
+      const actList = activityRes.data || activityRes.activities || activityRes;
+      setActivities(Array.isArray(actList) ? actList : []);
       setError('');
     } catch (err) {
       setError(err.message || 'Failed to load dashboard data');

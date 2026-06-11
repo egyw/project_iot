@@ -229,10 +229,15 @@ export default function SettingsPage() {
           </div>
           <div style={styles.infoRow}>
             <span style={styles.infoLabel}>MQTT Status</span>
-            {connectionStatus === 'connected' ? (
+            {backendInfo?.mqtt_status === 'online' ? (
               <span style={{ ...styles.statusBadge, ...styles.connected }}>
                 <span style={{ ...styles.pulse, background: 'var(--success)' }} />
                 Online
+              </span>
+            ) : backendInfo?.mqtt_status === 'offline' ? (
+              <span style={{ ...styles.statusBadge, ...styles.disconnected }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--danger)' }} />
+                Offline
               </span>
             ) : (
               <span style={{ ...styles.statusBadge, ...styles.pending }}>
@@ -245,13 +250,13 @@ export default function SettingsPage() {
               <div style={styles.infoRow}>
                 <span style={styles.infoLabel}>Total Assets</span>
                 <span style={{ ...styles.infoValue, fontFamily: 'inherit' }}>
-                  {backendInfo.total_assets ?? '—'}
+                  {(backendInfo.data || backendInfo).total_assets ?? '—'}
                 </span>
               </div>
               <div style={styles.infoRowLast}>
                 <span style={styles.infoLabel}>Active Sessions</span>
                 <span style={{ ...styles.infoValue, fontFamily: 'inherit' }}>
-                  {backendInfo.active_sessions ?? '—'}
+                  {(backendInfo.data || backendInfo).active_sessions ?? '—'}
                 </span>
               </div>
             </>

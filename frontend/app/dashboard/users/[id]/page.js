@@ -172,7 +172,7 @@ export default function UserDetailPage() {
   if (error) {
     return (
       <div style={styles.page}>
-        <Link href="/users" style={styles.backLink}>← Kembali ke Users</Link>
+        <Link href="/dashboard/users" style={styles.backLink}>← Kembali ke Users</Link>
         <div style={styles.errorContainer}>
           <p style={{ color: 'var(--danger)', fontWeight: 600 }}>⚠️ {error}</p>
         </div>
@@ -234,7 +234,7 @@ export default function UserDetailPage() {
       label: 'Aksi',
       render: (_, row) => (
         <Link
-          href={`/sessions/${row.id}`}
+          href={`/dashboard/sessions/${row.id}`}
           style={{
             fontSize: '13px',
             fontWeight: 600,
@@ -251,7 +251,7 @@ export default function UserDetailPage() {
 
   return (
     <div style={styles.page}>
-      <Link href="/users" style={styles.backLink}>
+      <Link href="/dashboard/users" style={styles.backLink}>
         ← Kembali ke Users
       </Link>
 

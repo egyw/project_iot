@@ -363,7 +363,7 @@ export default function UsersPage() {
         data={users}
         loading={loading}
         emptyMessage="Tidak ada user ditemukan"
-        onRowClick={(row) => router.push(`/users/${row.id}`)}
+        onRowClick={(row) => router.push(`/dashboard/users/${row.id}`)}
       />
 
       {/* Pagination */}

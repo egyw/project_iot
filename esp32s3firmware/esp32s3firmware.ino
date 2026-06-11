@@ -30,8 +30,8 @@
 #define PIN_SDA        8
 #define PIN_SCL        9
 #define PIN_BTN_LEFT   4   // GPIO0 tidak boleh — pin boot mode
-#define PIN_BTN_RIGHT  1
-#define PIN_BUZZER     2
+#define PIN_BTN_RIGHT  7   // GPIO5 floating di board ini
+#define PIN_BUZZER     6   // GPIO2 tidak boleh — USB D+
 
 // =============================================================================
 // WIFI & MQTT CONFIG — sesuaikan dengan jaringan Anda
@@ -65,7 +65,7 @@ const char* TOPIC_HEARTBEAT      = "smartlab/heartbeat";
 #define IDLE_TIMEOUT_MS     30000
 #define HEARTBEAT_INTERVAL  30000
 #define SCROLL_INTERVAL     2000
-#define DEBOUNCE_MS         50
+#define DEBOUNCE_MS         300
 
 // =============================================================================
 // STATE MACHINE
@@ -151,9 +151,11 @@ char errorMsg[64]               = "";
 int           scrollOffset      = 0;
 unsigned long lastScrollTime    = 0;
 
-// Button debounce
+// Button debounce + edge detection
 unsigned long lastBtnLeftPress  = 0;
 unsigned long lastBtnRightPress = 0;
+bool          prevBtnLeftState  = false;   // track previous read for edge detection
+bool          prevBtnRightState = false;
 
 // Heartbeat
 unsigned long lastHeartbeat     = 0;
@@ -228,8 +230,8 @@ void setup() {
   Serial.println(F("[BOOT] SmartLab ESP32-S3 Terminal"));
 
   // GPIO
-  pinMode(PIN_BTN_LEFT,  INPUT_PULLUP);
-  pinMode(PIN_BTN_RIGHT, INPUT_PULLUP);
+  pinMode(PIN_BTN_LEFT,  INPUT);
+  pinMode(PIN_BTN_RIGHT, INPUT);
   pinMode(PIN_BUZZER,    OUTPUT);
   digitalWrite(PIN_BUZZER, LOW);
 
@@ -636,6 +638,14 @@ void onAssetScanned(const char* uid) {
   doc["uid"]           = uid;
   doc["session_token"] = session.sessionToken;
 
+  // Tell backend whether we're borrowing or returning
+  if (currentState == STATE_RETURN_SCAN) {
+    doc["mode"]    = "return";
+    doc["user_id"] = session.userId;
+  } else {
+    doc["mode"]    = "borrow";
+  }
+
   char buffer[256];
   size_t len = serializeJson(doc, buffer, sizeof(buffer));
   mqttClient.publish(TOPIC_ASSET_SCAN, buffer, len);
@@ -768,6 +778,14 @@ void transitionTo(AppState newState) {
     lastScannedUID[0] = '\0';
   }
 
+  // Reset cooldown timer saat masuk state scanning baru
+  // agar KTM yang masih nempel tidak terbaca sebagai aset
+  if (newState == STATE_ACTION_SELECT ||
+      newState == STATE_SCAN_ITEMS ||
+      newState == STATE_RETURN_SCAN) {
+    lastScanTime = millis();
+  }
+
   // Buzzer feedback on success states
   if (newState == STATE_BORROW_SUCCESS) {
     beepLong();
@@ -869,19 +887,29 @@ void handleButtons() {
   bool leftPressed  = false;
   bool rightPressed = false;
 
-  // Debounced read
-  if (digitalRead(PIN_BTN_LEFT) == LOW) {
+  bool curLeft  = (digitalRead(PIN_BTN_LEFT)  == HIGH);
+  bool curRight = (digitalRead(PIN_BTN_RIGHT) == HIGH);
+
+  // Rising-edge detection + debounce cooldown:
+  // Register press ONLY when button transitions from released → pressed,
+  // AND enough time has passed since the last registered press.
+  // This prevents repeated inputs when the button is held down.
+  if (curLeft && !prevBtnLeftState) {
     if (millis() - lastBtnLeftPress > DEBOUNCE_MS) {
       leftPressed = true;
       lastBtnLeftPress = millis();
     }
   }
-  if (digitalRead(PIN_BTN_RIGHT) == LOW) {
+  if (curRight && !prevBtnRightState) {
     if (millis() - lastBtnRightPress > DEBOUNCE_MS) {
       rightPressed = true;
       lastBtnRightPress = millis();
     }
   }
+
+  // Update previous state for next iteration
+  prevBtnLeftState  = curLeft;
+  prevBtnRightState = curRight;
 
   if (!leftPressed && !rightPressed) return;
 
@@ -1133,8 +1161,8 @@ void drawActionSelect() {
     drawContentLine("Ada pinjaman aktif", 1);
   }
 
-  // Button bar: PINJAM left, KEMBALI right
-  drawButtonBar("PINJAM", "KEMBALI", false, session.hasActiveLoan);
+  // Button bar: PEMINJAMAN left, PENGEMBALIAN right
+  drawButtonBar("PEMINJAMAN", "PENGEMBALIAN", false, session.hasActiveLoan);
 }
 
 void drawScanItems() {

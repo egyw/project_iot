@@ -378,7 +378,7 @@ export default function SessionDetailPage() {
   if (error) {
     return (
       <div style={styles.page}>
-        <Link href="/sessions" style={styles.backLink}>← Kembali ke Sessions</Link>
+        <Link href="/dashboard/sessions" style={styles.backLink}>← Kembali ke Sessions</Link>
         <div style={styles.errorContainer}>
           <p style={{ color: 'var(--danger)', fontWeight: 600 }}>⚠️ {error}</p>
         </div>
@@ -421,7 +421,7 @@ export default function SessionDetailPage() {
 
   return (
     <div style={styles.page}>
-      <Link href="/sessions" style={styles.backLink}>
+      <Link href="/dashboard/sessions" style={styles.backLink}>
         ← Kembali ke Sessions
       </Link>
 

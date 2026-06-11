@@ -303,14 +303,13 @@ export default function AssetsPage() {
       render: (val, row) => val || row.asset_type?.name || '—',
     },
     {
-      key: 'status',
+      key: 'is_available',
       label: 'Status',
       render: (val) => {
-        const available = val === 'available' || val === 'tersedia';
         return (
           <Badge
-            text={available ? 'Tersedia' : 'Dipinjam'}
-            color={available ? 'success' : 'warning'}
+            text={val ? 'Tersedia' : 'Dipinjam'}
+            color={val ? 'success' : 'warning'}
           />
         );
       },
@@ -328,7 +327,7 @@ export default function AssetsPage() {
       key: 'actions',
       label: 'Aksi',
       render: (_, row) => {
-        const isBorrowed = row.status === 'borrowed' || row.status === 'dipinjam';
+        const isBorrowed = !row.is_available;
         return (
           <div style={styles.actionBtns}>
             <button

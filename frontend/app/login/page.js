@@ -118,7 +118,8 @@ export default function LoginPage() {
     if (isLoggedIn()) {
       router.replace('/dashboard');
     }
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -127,7 +128,8 @@ export default function LoginPage() {
 
     try {
       const data = await api.post('/auth/login', { username, password });
-      setToken(data.token);
+      const token = data.data?.token || data.token;
+      setToken(token);
       router.push('/dashboard');
     } catch (err) {
       setError(err.message || 'Login failed. Please try again.');

@@ -175,7 +175,7 @@ export default function SessionsPage() {
       ),
     },
     {
-      key: 'created_at',
+      key: 'borrowed_at',
       label: 'Tanggal Pinjam',
       render: (val) => (
         <span style={{ fontSize: '13px' }}>{formatDate(val)}</span>
@@ -200,7 +200,7 @@ export default function SessionsPage() {
           }}
           onClick={(e) => {
             e.stopPropagation();
-            router.push(`/sessions/${row.id}`);
+            router.push(`/dashboard/sessions/${row.id}`);
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'rgba(37, 99, 235, 0.12)';
@@ -253,7 +253,7 @@ export default function SessionsPage() {
         data={sessions}
         loading={loading}
         emptyMessage="Tidak ada sesi pinjaman ditemukan"
-        onRowClick={(row) => router.push(`/sessions/${row.id}`)}
+        onRowClick={(row) => router.push(`/dashboard/sessions/${row.id}`)}
       />
 
       {total > 20 && (
