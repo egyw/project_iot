@@ -53,7 +53,7 @@ async function handleKTMScan(client, payload) {
      JOIN   borrow_items bi  ON bi.session_id = bs.id AND bi.returned_at IS NULL
      JOIN   assets a         ON a.id = bi.asset_id
      JOIN   asset_types at   ON at.id = a.asset_type_id
-     WHERE  bs.user_id = $1 AND bs.status = 'active'`,
+     WHERE  bs.user_id = $1 AND bs.status IN ('active', 'partially_returned')`,
     [user.id],
   );
 
@@ -87,7 +87,7 @@ async function handleKTMScan(client, payload) {
  *  2. ASSET SCAN
  * ════════════════════════════════════════════════════════════ */
 async function handleAssetScan(client, payload) {
-  const { uid, session_token } = payload;
+  const { uid, session_token, mode, user_id } = payload;
 
   // 1. Look up asset by RFID UID
   const assetResult = await pool.query(
@@ -109,6 +109,53 @@ async function handleAssetScan(client, payload) {
 
   const asset = assetResult.rows[0];
 
+  // ── RETURN MODE ──────────────────────────────────────────
+  if (mode === 'return') {
+    // Asset must be currently borrowed (is_available = false)
+    if (asset.is_available) {
+      pub(client, 'smartlab/asset/response', {
+        valid: false,
+        session_token,
+        error: 'Aset tidak sedang dipinjam',
+      });
+      return;
+    }
+
+    // Check that this asset is borrowed by THIS user's active session
+    const ownerCheck = await pool.query(
+      `SELECT bs.id AS session_id
+       FROM   borrow_sessions bs
+       JOIN   borrow_items bi ON bi.session_id = bs.id
+       WHERE  bs.user_id = $1
+         AND  bs.status IN ('active', 'partially_returned')
+         AND  bi.asset_id = $2
+         AND  bi.returned_at IS NULL`,
+      [user_id, asset.id],
+    );
+
+    if (ownerCheck.rows.length === 0) {
+      pub(client, 'smartlab/asset/response', {
+        valid: false,
+        session_token,
+        error: 'Item bukan dipinjam olehmu',
+      });
+      return;
+    }
+
+    // Valid return item
+    pub(client, 'smartlab/asset/response', {
+      valid: true,
+      session_token,
+      asset_id: asset.id,
+      type_name: asset.type_name,
+      label: asset.label,
+    });
+
+    console.log(`[MQTT] Return scan OK — ${asset.type_name} "${asset.label}"`);
+    return;
+  }
+
+  // ── BORROW MODE (default) ────────────────────────────────
   // 2. Check availability
   if (!asset.is_available) {
     pub(client, 'smartlab/asset/response', {
