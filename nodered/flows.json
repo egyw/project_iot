@@ -4,7 +4,7 @@
         "type": "comment",
         "z": "flow-events",
         "name": "📖 README — SmartLab Node-RED Dashboard",
-        "info": "# SmartLab Asset Borrowing — Node-RED Monitoring Dashboard\n\n## Versi\n- Node-RED: 5.0.0\n- Dashboard: @flowfuse/node-red-dashboard v1.30.2 (Dashboard 2.0)\n\n## Flows\n1. **MQTT Event Monitor** — Subscribe smartlab/events, tampilkan BORROW_CREATED & RETURN_CONFIRMED\n2. **Heartbeat & Device Status** — Subscribe smartlab/heartbeat, monitor ESP32-S3 online/offline\n3. **Stats Polling** — Poll GET /api/stats/overview setiap 10 detik, tampilkan gauge & text\n4. **Activity Feed** — Poll GET /api/stats/activity?limit=10 setiap 15 detik, tampilkan tabel\n5. **Manual Admin Actions** — Tombol Refresh Stats untuk trigger manual\n\n## Setup\n1. Pastikan MQTT broker berjalan di localhost:1883\n2. Pastikan backend API berjalan di http://127.0.0.1:3001\n3. Ganti `ADMIN_TOKEN` pada node 'Set Auth Header' dengan JWT token admin yang valid\n4. Import file ini ke Node-RED via menu → Import → Clipboard\n5. Deploy dan buka Dashboard di http://localhost:1880/dashboard",
+        "info": "# SmartLab Asset Borrowing — Node-RED Monitoring Dashboard\n\n## Versi\n- Node-RED: 5.0.0\n- Dashboard: @flowfuse/node-red-dashboard v1.30.2 (Dashboard 2.0)\n\n## Flows\n0. **Auto Login** — Login otomatis ke backend, simpan JWT di global context\n1. **MQTT Event Monitor** — Subscribe smartlab/events, tampilkan BORROW_CREATED & RETURN_CONFIRMED\n2. **Heartbeat & Device Status** — Subscribe smartlab/heartbeat, monitor ESP32-S3 online/offline\n3. **Stats Polling** — Poll GET /api/stats/overview setiap 10 detik, tampilkan gauge & text\n4. **Activity Feed** — Poll GET /api/stats/activity?limit=10 setiap 15 detik, tampilkan tabel\n5. **Manual Admin Actions** — Tombol Refresh Stats untuk trigger manual\n\n## Setup\n1. Pastikan MQTT broker berjalan di localhost:1883\n2. Pastikan backend API berjalan di http://127.0.0.1:3001\n3. Import file ini ke Node-RED via menu → Import → Clipboard\n4. Deploy dan buka Dashboard di http://localhost:1880/dashboard",
         "x": 280,
         "y": 40,
         "wires": []
@@ -91,7 +91,7 @@
         "page": "ui-page-main",
         "width": "12",
         "height": "1",
-        "order": 4,
+        "order": 5,
         "showTitle": true,
         "className": ""
     },
@@ -102,7 +102,18 @@
         "page": "ui-page-main",
         "width": "6",
         "height": "1",
-        "order": 5,
+        "order": 6,
+        "showTitle": true,
+        "className": ""
+    },
+    {
+        "id": "ui-group-camera",
+        "type": "ui-group",
+        "name": "\ud83d\udcf7 Camera Feed",
+        "page": "ui-page-main",
+        "width": "6",
+        "height": "1",
+        "order": 4,
         "showTitle": true,
         "className": ""
     },
@@ -133,6 +144,125 @@
         "closeMsg": {},
         "willMsg": {},
         "sessionExpiry": ""
+    },
+
+    {
+        "id": "flow-auth",
+        "type": "tab",
+        "label": "Flow 0 — Auto Login",
+        "disabled": false,
+        "info": "Login otomatis ke backend API saat startup, simpan JWT token di global context"
+    },
+
+    {
+        "id": "node-comment-flow0",
+        "type": "comment",
+        "z": "flow-auth",
+        "name": "🔑 Flow 0 — Auto Login: POST /api/auth/login on startup → store JWT in global.smartlab_token",
+        "info": "",
+        "x": 380,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "node-inject-login",
+        "type": "inject",
+        "z": "flow-auth",
+        "name": "On Startup (login)",
+        "props": [
+            { "p": "payload" },
+            { "p": "topic", "vt": "str" }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "1",
+        "topic": "login",
+        "payload": "",
+        "payloadType": "date",
+        "x": 160,
+        "y": 140,
+        "wires": [
+            ["node-build-login"]
+        ]
+    },
+    {
+        "id": "node-build-login",
+        "type": "function",
+        "z": "flow-auth",
+        "name": "Build Login Request",
+        "func": "msg.headers = { 'Content-Type': 'application/json' };\nmsg.payload = JSON.stringify({\n    username: 'admin',\n    password: 'admin123'\n});\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 140,
+        "wires": [
+            ["node-http-login"]
+        ]
+    },
+    {
+        "id": "node-http-login",
+        "type": "http request",
+        "z": "flow-auth",
+        "name": "POST /api/auth/login",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://127.0.0.1:3001/api/auth/login",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 640,
+        "y": 140,
+        "wires": [
+            ["node-store-token"]
+        ]
+    },
+    {
+        "id": "node-store-token",
+        "type": "function",
+        "z": "flow-auth",
+        "name": "Store Token in Global",
+        "func": "try {\n    const body = msg.payload;\n    const token = body.data ? body.data.token : body.token;\n    \n    if (!token) {\n        node.warn('Login failed — no token received. Status: ' + msg.statusCode);\n        node.status({ fill: 'red', shape: 'ring', text: 'Login failed' });\n        return null;\n    }\n    \n    global.set('smartlab_token', token);\n    node.status({ fill: 'green', shape: 'dot', text: 'Token OK — ' + new Date().toLocaleTimeString() });\n    node.warn('[Auth] JWT token saved to global context');\n    return msg;\n} catch (e) {\n    node.warn('Failed to store token: ' + e.message);\n    node.status({ fill: 'red', shape: 'ring', text: 'Error: ' + e.message });\n    return null;\n}",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 880,
+        "y": 140,
+        "wires": [[]]
+    },
+    {
+        "id": "node-inject-relogin",
+        "type": "inject",
+        "z": "flow-auth",
+        "name": "Re-login every 12 hours",
+        "props": [
+            { "p": "payload" },
+            { "p": "topic", "vt": "str" }
+        ],
+        "repeat": "43200",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "topic": "relogin",
+        "payload": "",
+        "payloadType": "date",
+        "x": 170,
+        "y": 220,
+        "wires": [
+            ["node-build-login"]
+        ]
     },
 
     {
@@ -226,7 +356,7 @@
         "x": 860,
         "y": 160,
         "wires": [
-            ["node-ui-event-text", "node-notif-borrow"]
+            ["node-ui-event-text", "node-notif-borrow", "node-fetch-photo"]
         ]
     },
     {
@@ -417,9 +547,9 @@
         "id": "node-comment-flow3",
         "type": "comment",
         "z": "flow-stats",
-        "name": "📊 Flow 3 — Stats Polling: Inject 10s → Auth Header → HTTP GET /api/stats/overview → Parse → Gauge & Text widgets",
+        "name": "📊 Flow 3 — Stats Polling: Inject 10s → Auth Header (from global) → HTTP GET /api/stats/overview → Parse → Gauge & Text widgets",
         "info": "",
-        "x": 440,
+        "x": 480,
         "y": 40,
         "wires": []
     },
@@ -435,7 +565,7 @@
         "repeat": "10",
         "crontab": "",
         "once": true,
-        "onceDelay": "2",
+        "onceDelay": "5",
         "topic": "stats",
         "payload": "",
         "payloadType": "date",
@@ -461,15 +591,15 @@
         "id": "node-set-auth-stats",
         "type": "function",
         "z": "flow-stats",
-        "name": "Set Auth Header (Stats)",
-        "func": "// ╔══════════════════════════════════════════════════════╗\n// ║  GANTI TOKEN DI BAWAH DENGAN JWT ADMIN YANG VALID  ║\n// ╚══════════════════════════════════════════════════════╝\nconst ADMIN_TOKEN = 'ADMIN_TOKEN';\n\nmsg.headers = {\n    'Authorization': 'Bearer ' + ADMIN_TOKEN,\n    'Content-Type': 'application/json'\n};\nreturn msg;",
+        "name": "Set Auth Header (from Global)",
+        "func": "const token = global.get('smartlab_token');\nif (!token) {\n    node.warn('No JWT token found in global context. Waiting for auto-login...');\n    node.status({ fill: 'yellow', shape: 'ring', text: 'No token yet' });\n    return null;\n}\nmsg.headers = {\n    'Authorization': 'Bearer ' + token,\n    'Content-Type': 'application/json'\n};\nnode.status({ fill: 'green', shape: 'dot', text: 'Token OK' });\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 410,
+        "x": 420,
         "y": 160,
         "wires": [
             ["node-http-stats"]
@@ -502,7 +632,7 @@
         "type": "function",
         "z": "flow-stats",
         "name": "Parse Stats Response",
-        "func": "try {\n    const body = (typeof msg.payload === 'string') ? JSON.parse(msg.payload) : msg.payload;\n    const stats = body.data;\n\n    if (!stats) {\n        node.warn('No data in stats response');\n        return null;\n    }\n\n    // Output 1: Available Assets (for gauge)\n    const msg1 = { payload: stats.available_assets, total: stats.total_assets };\n    // Output 2: Active Sessions\n    const msg2 = { payload: `🔄 ${stats.active_sessions}` };\n    // Output 3: Borrows Today\n    const msg3 = { payload: `📦 ${stats.borrows_today}` };\n    // Output 4: Total Assets label\n    const msg4 = { payload: `🏷️ ${stats.total_assets}` };\n    // Output 5: Borrows This Week\n    const msg5 = { payload: `📅 ${stats.borrows_this_week}` };\n\n    return [msg1, msg2, msg3, msg4, msg5];\n} catch (e) {\n    node.warn('Failed to parse stats: ' + e.message);\n    return [null, null, null, null, null];\n}",
+        "func": "try {\n    const body = (typeof msg.payload === 'string') ? JSON.parse(msg.payload) : msg.payload;\n    const stats = body.data;\n\n    if (!stats) {\n        node.warn('No data in stats response. Status: ' + msg.statusCode);\n        node.status({ fill: 'red', shape: 'ring', text: 'No data' });\n        return [null, null, null, null, null];\n    }\n\n    node.status({ fill: 'green', shape: 'dot', text: 'OK — ' + new Date().toLocaleTimeString() });\n\n    // Output 1: Available Assets (for gauge)\n    const msg1 = { payload: stats.available_assets, total: stats.total_assets };\n    // Output 2: Active Sessions\n    const msg2 = { payload: `🔄 ${stats.active_sessions}` };\n    // Output 3: Borrows Today\n    const msg3 = { payload: `📦 ${stats.borrows_today}` };\n    // Output 4: Total Assets label\n    const msg4 = { payload: `🏷️ ${stats.total_assets}` };\n    // Output 5: Borrows This Week\n    const msg5 = { payload: `📅 ${stats.borrows_this_week}` };\n\n    return [msg1, msg2, msg3, msg4, msg5];\n} catch (e) {\n    node.warn('Failed to parse stats: ' + e.message);\n    node.status({ fill: 'red', shape: 'ring', text: 'Parse error' });\n    return [null, null, null, null, null];\n}",
         "outputs": 5,
         "timeout": "",
         "noerr": 0,
@@ -645,9 +775,9 @@
         "id": "node-comment-flow4",
         "type": "comment",
         "z": "flow-activity",
-        "name": "📋 Flow 4 — Activity Feed: Inject 15s → Auth Header → HTTP GET /api/stats/activity → Parse → HTML Table",
+        "name": "📋 Flow 4 — Activity Feed: Inject 15s → Auth Header (from global) → HTTP GET /api/stats/activity → Parse → HTML Table",
         "info": "",
-        "x": 420,
+        "x": 440,
         "y": 40,
         "wires": []
     },
@@ -663,7 +793,7 @@
         "repeat": "15",
         "crontab": "",
         "once": true,
-        "onceDelay": "3",
+        "onceDelay": "6",
         "topic": "activity",
         "payload": "",
         "payloadType": "date",
@@ -677,8 +807,8 @@
         "id": "node-set-auth-activity",
         "type": "function",
         "z": "flow-activity",
-        "name": "Set Auth Header (Activity)",
-        "func": "// ╔══════════════════════════════════════════════════════╗\n// ║  GANTI TOKEN DI BAWAH DENGAN JWT ADMIN YANG VALID  ║\n// ╚══════════════════════════════════════════════════════╝\nconst ADMIN_TOKEN = 'ADMIN_TOKEN';\n\nmsg.headers = {\n    'Authorization': 'Bearer ' + ADMIN_TOKEN,\n    'Content-Type': 'application/json'\n};\nreturn msg;",
+        "name": "Set Auth Header (from Global)",
+        "func": "const token = global.get('smartlab_token');\nif (!token) {\n    node.warn('No JWT token found in global context. Waiting for auto-login...');\n    node.status({ fill: 'yellow', shape: 'ring', text: 'No token yet' });\n    return null;\n}\nmsg.headers = {\n    'Authorization': 'Bearer ' + token,\n    'Content-Type': 'application/json'\n};\nnode.status({ fill: 'green', shape: 'dot', text: 'Token OK' });\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -718,7 +848,7 @@
         "type": "function",
         "z": "flow-activity",
         "name": "Parse Activity → HTML Table",
-        "func": "try {\n    const body = (typeof msg.payload === 'string') ? JSON.parse(msg.payload) : msg.payload;\n    const rows = body.data;\n\n    if (!rows || rows.length === 0) {\n        msg.payload = '<p style=\"color:#6c7086;text-align:center;padding:20px;\">No recent activity</p>';\n        return msg;\n    }\n\n    let html = `\n    <style>\n        .activity-table {\n            width: 100%;\n            border-collapse: collapse;\n            font-family: 'Segoe UI', sans-serif;\n            font-size: 13px;\n        }\n        .activity-table th {\n            background: #313244;\n            color: #cdd6f4;\n            padding: 10px 12px;\n            text-align: left;\n            font-weight: 600;\n            border-bottom: 2px solid #45475a;\n        }\n        .activity-table td {\n            padding: 8px 12px;\n            border-bottom: 1px solid #313244;\n            color: #bac2de;\n        }\n        .activity-table tr:hover td {\n            background: #1e1e2e;\n        }\n        .badge-borrow {\n            background: #a6e3a1; color: #1e1e2e;\n            padding: 2px 8px; border-radius: 4px;\n            font-weight: 600; font-size: 11px;\n        }\n        .badge-return {\n            background: #89b4fa; color: #1e1e2e;\n            padding: 2px 8px; border-radius: 4px;\n            font-weight: 600; font-size: 11px;\n        }\n    </style>\n    <table class=\"activity-table\">\n        <thead>\n            <tr>\n                <th>Type</th>\n                <th>User</th>\n                <th>NRP</th>\n                <th>Items</th>\n                <th>Time</th>\n            </tr>\n        </thead>\n        <tbody>`;\n\n    rows.forEach(row => {\n        const badgeClass = row.type === 'BORROW' ? 'badge-borrow' : 'badge-return';\n        const icon = row.type === 'BORROW' ? '📦' : '↩️';\n        const ts = new Date(row.timestamp).toLocaleString('id-ID', {\n            day: '2-digit', month: 'short', year: 'numeric',\n            hour: '2-digit', minute: '2-digit'\n        });\n\n        html += `\n            <tr>\n                <td><span class=\"${badgeClass}\">${icon} ${row.type}</span></td>\n                <td>${row.user_name}</td>\n                <td>${row.user_nrp}</td>\n                <td style=\"text-align:center;\">${row.item_count}</td>\n                <td>${ts}</td>\n            </tr>`;\n    });\n\n    html += `\n        </tbody>\n    </table>`;\n\n    msg.payload = html;\n    return msg;\n} catch (e) {\n    node.warn('Failed to parse activity: ' + e.message);\n    msg.payload = '<p style=\"color:#f38ba8;\">Error loading activity data</p>';\n    return msg;\n}",
+        "func": "try {\n    const body = (typeof msg.payload === 'string') ? JSON.parse(msg.payload) : msg.payload;\n    const rows = body.data;\n\n    if (!rows || rows.length === 0) {\n        msg.payload = '<p style=\"color:#6c7086;text-align:center;padding:20px;\">No recent activity</p>';\n        return msg;\n    }\n\n    let html = `\n    <style>\n        .activity-table {\n            width: 100%;\n            border-collapse: collapse;\n            font-family: 'Segoe UI', sans-serif;\n            font-size: 13px;\n        }\n        .activity-table th {\n            background: #313244;\n            color: #cdd6f4;\n            padding: 10px 12px;\n            text-align: left;\n            font-weight: 600;\n            border-bottom: 2px solid #45475a;\n        }\n        .activity-table td {\n            padding: 8px 12px;\n            border-bottom: 1px solid #313244;\n            color: #bac2de;\n        }\n        .activity-table tr:hover td {\n            background: #1e1e2e;\n        }\n        .badge-borrow {\n            background: #a6e3a1; color: #1e1e2e;\n            padding: 2px 8px; border-radius: 4px;\n            font-weight: 600; font-size: 11px;\n        }\n        .badge-return {\n            background: #89b4fa; color: #1e1e2e;\n            padding: 2px 8px; border-radius: 4px;\n            font-weight: 600; font-size: 11px;\n        }\n    </style>\n    <table class=\"activity-table\">\n        <thead>\n            <tr>\n                <th>Type</th>\n                <th>User</th>\n                <th>NRP</th>\n                <th>Items</th>\n                <th>Time</th>\n            </tr>\n        </thead>\n        <tbody>`;\n\n    rows.forEach(row => {\n        const badgeClass = row.type === 'BORROW' ? 'badge-borrow' : 'badge-return';\n        const icon = row.type === 'BORROW' ? '📦' : '↩️';\n        const ts = new Date(row.timestamp).toLocaleString('id-ID', {\n            day: '2-digit', month: 'short', year: 'numeric',\n            hour: '2-digit', minute: '2-digit'\n        });\n\n        html += `\n            <tr>\n                <td><span class=\"${badgeClass}\">${icon} ${row.type}</span></td>\n                <td>${row.user_name}</td>\n                <td>${row.user_nrp}</td>\n                <td style=\"text-align:center;\">${row.item_count}</td>\n                <td>${ts}</td>\n            </tr>`;\n    });\n\n    html += `\n        </tbody>\n    </table>`;\n\n    msg.payload = html;\n    node.status({ fill: 'green', shape: 'dot', text: rows.length + ' rows — ' + new Date().toLocaleTimeString() });\n    return msg;\n} catch (e) {\n    node.warn('Failed to parse activity: ' + e.message);\n    msg.payload = '<p style=\"color:#f38ba8;\">Error loading activity data</p>';\n    node.status({ fill: 'red', shape: 'ring', text: 'Parse error' });\n    return msg;\n}",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -843,5 +973,107 @@
         "x": 700,
         "y": 220,
         "wires": []
+    },
+
+    {
+        "id": "node-fetch-photo",
+        "type": "function",
+        "z": "flow-events",
+        "name": "Build Photo Request",
+        "func": "const d = msg.eventData;\nif (!d || !d.session_id) return null;\n\nconst token = global.get('smartlab_token');\nif (!token) {\n    node.warn('No JWT token for photo fetch');\n    return null;\n}\n\nmsg.session_id = d.session_id;\nmsg.headers = {\n    'Authorization': 'Bearer ' + token\n};\nmsg.url = 'http://127.0.0.1:3001/api/sessions/' + d.session_id + '/photo';\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 870,
+        "y": 340,
+        "wires": [
+            ["node-delay-photo"]
+        ]
+    },
+    {
+        "id": "node-delay-photo",
+        "type": "delay",
+        "z": "flow-events",
+        "name": "Wait 3s",
+        "pauseType": "delay",
+        "timeout": "3",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1050,
+        "y": 340,
+        "wires": [
+            ["node-http-photo"]
+        ]
+    },
+    {
+        "id": "node-http-photo",
+        "type": "http request",
+        "z": "flow-events",
+        "name": "GET Session Photo",
+        "method": "GET",
+        "ret": "bin",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 1210,
+        "y": 340,
+        "wires": [
+            ["node-photo-to-base64"]
+        ]
+    },
+    {
+        "id": "node-photo-to-base64",
+        "type": "function",
+        "z": "flow-events",
+        "name": "Photo to Base64 HTML",
+        "func": "if (msg.statusCode !== 200 || !msg.payload) {\n    msg.payload = '<div style=\"text-align:center;padding:30px;color:#6c7086;\">Foto tidak tersedia</div>';\n    return msg;\n}\n\nconst base64 = Buffer.from(msg.payload).toString('base64');\nconst sid = msg.session_id || '?';\nconst ts = new Date().toLocaleTimeString('id-ID');\n\nmsg.payload = '<div style=\"text-align:center;\"><img src=\"data:image/jpeg;base64,' + base64 + '\" style=\"max-width:100%;max-height:280px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.3);\" /><p style=\"color:#bac2de;font-size:12px;margin-top:8px;\">Session #' + sid + ' — ' + ts + '</p></div>';\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1210,
+        "y": 420,
+        "wires": [
+            ["node-ui-camera-feed"]
+        ]
+    },
+    {
+        "id": "node-ui-camera-feed",
+        "type": "ui-template",
+        "z": "flow-events",
+        "group": "ui-group-camera",
+        "name": "Camera Feed Display",
+        "order": 1,
+        "width": "6",
+        "height": "5",
+        "head": "",
+        "format": "<div style=\"min-height:200px;display:flex;align-items:center;justify-content:center;\"><div v-if=\"msg\" v-html=\"msg.payload\"></div><p v-else style=\"color:#6c7086;\">Menunggu foto peminjam...</p></div>",
+        "storeOutMessages": true,
+        "passthru": false,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1220,
+        "y": 500,
+        "wires": [[]]
     }
 ]
