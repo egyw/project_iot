@@ -5,7 +5,9 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "nodemon src/index.js",
+    "db:setup": "node src/db/setup.js",
+    "db:studio": "npx prisma db pull && npx prisma studio"
   },
   "keywords": [
     "smartlab",
@@ -29,5 +31,9 @@
     "multer": "2.1.1",
     "pg": "8.21.0",
     "uuid": "14.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0",
+    "prisma": "^5.10.0"
   }
 }

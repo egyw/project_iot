@@ -29,16 +29,16 @@
 // =============================================================================
 #define PIN_SDA        8
 #define PIN_SCL        9
-#define PIN_BTN_LEFT   0
+#define PIN_BTN_LEFT   4   // GPIO0 tidak boleh — pin boot mode
 #define PIN_BTN_RIGHT  1
 #define PIN_BUZZER     2
 
 // =============================================================================
 // WIFI & MQTT CONFIG — sesuaikan dengan jaringan Anda
 // =============================================================================
-const char* WIFI_SSID     = "YOUR_WIFI_SSID";
-const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
-const char* MQTT_SERVER   = "YOUR_MQTT_SERVER";
+const char* WIFI_SSID     = "eggy";
+const char* WIFI_PASSWORD = "@Wangarry88";
+const char* MQTT_SERVER   = "192.168.137.1"; // ganti sesuai ipconfig
 const int   MQTT_PORT     = 1883;
 const char* MQTT_USER     = "";   // kosongkan jika tanpa auth
 const char* MQTT_PASS     = "";
@@ -125,7 +125,7 @@ struct ActiveSession {
 // GLOBAL OBJECTS
 // =============================================================================
 Adafruit_PN532 nfc(PIN_SDA, PIN_SCL);   // I2C constructor (uses Wire)
-U8g2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8G2_PIN_NONE);
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 
 WiFiClient   wifiClient;
 PubSubClient mqttClient(wifiClient);
@@ -161,6 +161,11 @@ unsigned long lastHeartbeat     = 0;
 // MQTT response wait flag
 bool          waitingMqttResp   = false;
 unsigned long mqttReqSentAt     = 0;
+
+// RFID scan cooldown (prevent repeated reads)
+char          lastScannedUID[15] = "";
+unsigned long lastScanTime       = 0;
+#define RFID_COOLDOWN_MS  3000
 
 // =============================================================================
 // FORWARD DECLARATIONS
@@ -573,6 +578,15 @@ void handleRFIDScan() {
   char uidStr[15] = "";
   uidToHexString(uid, uidLength, uidStr);
 
+  // Cooldown: abaikan jika UID sama dan belum lewat 3 detik
+  if (strcmp(uidStr, lastScannedUID) == 0 && (millis() - lastScanTime < RFID_COOLDOWN_MS)) {
+    return;  // Masih kartu yang sama, skip
+  }
+
+  // Simpan UID dan waktu scan terakhir
+  strlcpy(lastScannedUID, uidStr, sizeof(lastScannedUID));
+  lastScanTime = millis();
+
   Serial.print(F("[RFID] UID: "));
   Serial.println(uidStr);
 
@@ -748,6 +762,11 @@ void transitionTo(AppState newState) {
   oledNeedsRedraw = true;
   scrollOffset    = 0;
   lastScrollTime  = millis();
+
+  // Reset RFID cooldown saat kembali ke HOME
+  if (newState == STATE_HOME) {
+    lastScannedUID[0] = '\0';
+  }
 
   // Buzzer feedback on success states
   if (newState == STATE_BORROW_SUCCESS) {

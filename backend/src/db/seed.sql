@@ -1,7 +1,7 @@
 -- Seed untuk tabel users (3 mahasiswa)
 INSERT INTO users (id, nrp, name, rfid_uid) VALUES
-(1, '5025211001', 'Budi Santoso', '04:11:22:33:44:55:66'),
-(2, '5025211002', 'Siti Aminah', '04:AA:BB:CC:DD:EE:FF'),
+(1, '5025211001', 'Egbert Wangarry', '04912b520a6480'),
+(2, '5025211002', 'Admin KTM', '8c1f5107'),
 (3, '5025211003', 'Andi Wijaya', '04:99:88:77:66:55:44')
 ON CONFLICT (id) DO NOTHING;
 

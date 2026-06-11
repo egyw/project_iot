@@ -23,12 +23,12 @@
 // ============================================================
 //  KONFIGURASI — ganti sesuai setup
 // ============================================================
-#define WIFI_SSID      "nama_wifi_lab"
-#define WIFI_PASSWORD  "password_wifi"
-#define MQTT_BROKER_IP "192.168.1.100"
+#define WIFI_SSID      "eggy"
+#define WIFI_PASSWORD  "@Wangarry88"
+#define MQTT_BROKER_IP "192.168.137.1" //ganti sesuai ipconfig
 #define MQTT_PORT      1883
-#define BACKEND_URL    "http://192.168.1.100:3001"
-#define CAM_SECRET     "GANTI_DENGAN_CAM_DEVICE_SECRET_DARI_ENV"
+#define BACKEND_URL    "http://192.168.137.1:3001" //ganti sesuai ipconfig
+#define CAM_SECRET     "df0e2ab03c65aa8094193b9d5ae90711d0996356581e08682bf34af6731e6bcd"
 #define DEVICE_ID      "esp32cam-smartlab-01"
 
 // ============================================================
@@ -71,7 +71,7 @@ char pendingSessionToken[37] = {0};   // UUID v4 = 36 chars + null
 // ============================================================
 //  Backend server host & port (parsed dari BACKEND_URL)
 // ============================================================
-static const char* SERVER_HOST = "192.168.1.100";
+static const char* SERVER_HOST = "192.168.137.1"; //ganti sesuai ipconfig
 static const uint16_t SERVER_PORT = 3001;
 static const char* UPLOAD_PATH = "/api/photo/upload";
 

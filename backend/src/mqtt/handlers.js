@@ -35,6 +35,7 @@ async function handleKTMScan(client, payload) {
   if (userResult.rows.length === 0) {
     pub(client, 'smartlab/ktm/response', {
       valid: false,
+      session_token,
       reason: 'USER_NOT_FOUND',
     });
     return;
@@ -67,14 +68,16 @@ async function handleKTMScan(client, payload) {
   // 3. Trigger ESP32-CAM to capture photo
   pub(client, 'smartlab/cam/trigger', { session_token });
 
-  // 4. Respond
+  // 4. Respond — flat fields agar ESP32 bisa langsung baca
   pub(client, 'smartlab/ktm/response', {
     valid: true,
-    user: { id: user.id, name: user.name, nrp: user.nrp },
+    session_token,
+    user_id: user.id,
+    user_name: user.name,
+    user_nrp: user.nrp,
     has_active_loan: hasActiveLoan,
     active_session_id: activeSessionId,
     borrowed_items: borrowedItems,
-    session_token,
   });
 
   console.log(`[MQTT] KTM scan OK — user ${user.nrp} (${user.name})`);
@@ -98,7 +101,8 @@ async function handleAssetScan(client, payload) {
   if (assetResult.rows.length === 0) {
     pub(client, 'smartlab/asset/response', {
       valid: false,
-      reason: 'ASSET_NOT_FOUND',
+      session_token,
+      error: 'Aset tidak dikenal',
     });
     return;
   }
@@ -109,8 +113,8 @@ async function handleAssetScan(client, payload) {
   if (!asset.is_available) {
     pub(client, 'smartlab/asset/response', {
       valid: false,
-      reason: 'ASSET_UNAVAILABLE',
-      asset: { type_name: asset.type_name, label: asset.label },
+      session_token,
+      error: 'Aset sedang dipinjam',
     });
     return;
   }
@@ -124,8 +128,8 @@ async function handleAssetScan(client, payload) {
   if (sessionAssets.has(asset.id)) {
     pub(client, 'smartlab/asset/response', {
       valid: false,
-      reason: 'ALREADY_IN_SESSION',
-      asset: { type_name: asset.type_name, label: asset.label },
+      session_token,
+      error: 'Item sudah discan',
     });
     return;
   }
@@ -135,7 +139,10 @@ async function handleAssetScan(client, payload) {
 
   pub(client, 'smartlab/asset/response', {
     valid: true,
-    asset: { id: asset.id, type_name: asset.type_name, label: asset.label },
+    session_token,
+    asset_id: asset.id,
+    type_name: asset.type_name,
+    label: asset.label,
   });
 
   console.log(`[MQTT] Asset scanned — ${asset.type_name} "${asset.label}"`);
