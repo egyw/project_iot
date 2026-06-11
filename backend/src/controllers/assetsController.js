@@ -13,7 +13,11 @@ const pool = require('../db/index.js');
  */
 async function listTypes(_req, res) {
   const result = await pool.query(
-    'SELECT id, name, description, created_at FROM asset_types ORDER BY id',
+    `SELECT at.id, at.name, at.description, at.created_at, COUNT(a.id)::int AS asset_count
+     FROM asset_types at
+     LEFT JOIN assets a ON a.asset_type_id = at.id
+     GROUP BY at.id
+     ORDER BY at.id`
   );
   res.json({ data: result.rows });
 }

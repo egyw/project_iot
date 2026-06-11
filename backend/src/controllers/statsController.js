@@ -3,6 +3,7 @@
  * ────────────────────────────────────────────────────────── */
 
 const pool = require('../db/index.js');
+const mqttClient = require('../mqtt/client.js');
 
 /* ════════════════════════════════════════════════════════════
  *  GET /api/stats/overview — aggregate counters
@@ -13,7 +14,7 @@ async function getOverview(_req, res) {
       pool.query('SELECT COUNT(*)::int AS count FROM assets'),
       pool.query('SELECT COUNT(*)::int AS count FROM assets WHERE is_available = true'),
       pool.query(
-        "SELECT COUNT(*)::int AS count FROM borrow_sessions WHERE status = 'active'",
+        "SELECT COUNT(*)::int AS count FROM borrow_sessions WHERE status IN ('active', 'partially_returned')",
       ),
       pool.query(
         'SELECT COUNT(*)::int AS count FROM borrow_sessions WHERE DATE(borrowed_at) = CURRENT_DATE',
@@ -31,6 +32,7 @@ async function getOverview(_req, res) {
       borrows_today: borrowsToday.rows[0].count,
       borrows_this_week: borrowsWeek.rows[0].count,
     },
+    mqtt_status: mqttClient.connected ? 'online' : 'offline',
   });
 }
 

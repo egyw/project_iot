@@ -297,55 +297,64 @@ async function handleReturnConfirm(client, payload) {
   try {
     await db.query('BEGIN');
 
+    const affectedSessions = new Set();
+
     // 1. Mark each item as returned & make asset available again
     for (const assetId of asset_ids) {
-      await db.query(
+      const itemRes = await db.query(
         `UPDATE borrow_items
          SET    returned_at = NOW()
-         WHERE  session_id = $1 AND asset_id = $2 AND returned_at IS NULL`,
-        [session_id, assetId],
+         WHERE  asset_id = $1 AND returned_at IS NULL
+         RETURNING session_id`,
+        [assetId],
       );
+
+      if (itemRes.rows.length > 0) {
+        affectedSessions.add(itemRes.rows[0].session_id);
+      }
+
       await db.query(
         'UPDATE assets SET is_available = true WHERE id = $1',
         [assetId],
       );
     }
 
-    // 2. Count remaining unreturned items
-    const remaining = await db.query(
-      'SELECT COUNT(*) FROM borrow_items WHERE session_id = $1 AND returned_at IS NULL',
-      [session_id],
-    );
-    const remainingCount = parseInt(remaining.rows[0].count, 10);
-    const newStatus = remainingCount === 0 ? 'fully_returned' : 'partially_returned';
+    // 2. Update session status for all affected sessions
+    for (const sId of affectedSessions) {
+      const remaining = await db.query(
+        'SELECT COUNT(*) FROM borrow_items WHERE session_id = $1 AND returned_at IS NULL',
+        [sId],
+      );
+      const remainingCount = parseInt(remaining.rows[0].count, 10);
+      const newStatus = remainingCount === 0 ? 'fully_returned' : 'partially_returned';
 
-    // 3. Update session status
-    await db.query(
-      'UPDATE borrow_sessions SET status = $1, last_updated = NOW() WHERE id = $2',
-      [newStatus, session_id],
-    );
+      await db.query(
+        'UPDATE borrow_sessions SET status = $1, last_updated = NOW() WHERE id = $2',
+        [newStatus, sId],
+      );
+
+      // 3. Broadcast event per session
+      pub(client, 'smartlab/events', {
+        event: 'RETURN_CONFIRMED',
+        timestamp: new Date().toISOString(),
+        data: {
+          session_id: sId,
+          returned_count: asset_ids.length, // total assets returned in this payload
+          new_status: newStatus,
+        },
+      });
+    }
 
     await db.query('COMMIT');
 
-    // 4. Broadcast event
-    pub(client, 'smartlab/events', {
-      event: 'RETURN_CONFIRMED',
-      timestamp: new Date().toISOString(),
-      data: {
-        session_id,
-        returned_count: asset_ids.length,
-        new_status: newStatus,
-      },
-    });
-
-    // 5. Respond to ESP32
+    // 4. Respond to ESP32 (send success = true)
     pub(client, 'smartlab/return/result', {
       success: true,
-      status: newStatus,
+      status: 'returned', // generic success string since it might affect multiple sessions
     });
 
     console.log(
-      `[MQTT] Return confirmed — session #${session_id}, ${asset_ids.length} item(s), status: ${newStatus}`,
+      `[MQTT] Return confirmed — ${asset_ids.length} item(s) processed across ${affectedSessions.size} session(s)`,
     );
   } catch (err) {
     await db.query('ROLLBACK');
