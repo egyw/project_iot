@@ -1,0 +1,33 @@
+{
+  "name": "smartlab-backend",
+  "version": "1.0.0",
+  "description": "SmartLab Asset Borrowing System — Backend API & MQTT Handler",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "keywords": [
+    "smartlab",
+    "iot",
+    "asset-management",
+    "esp32"
+  ],
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "bcryptjs": "3.0.3",
+    "compression": "1.8.1",
+    "cors": "2.8.6",
+    "dotenv": "17.4.2",
+    "express": "5.2.1",
+    "express-validator": "7.3.2",
+    "helmet": "8.2.0",
+    "jsonwebtoken": "9.0.3",
+    "morgan": "1.11.0",
+    "mqtt": "5.15.1",
+    "multer": "2.1.1",
+    "pg": "8.21.0",
+    "uuid": "14.0.0"
+  }
+}

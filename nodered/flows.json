@@ -1,0 +1,847 @@
+[
+    {
+        "id": "node-readme",
+        "type": "comment",
+        "z": "flow-events",
+        "name": "📖 README — SmartLab Node-RED Dashboard",
+        "info": "# SmartLab Asset Borrowing — Node-RED Monitoring Dashboard\n\n## Versi\n- Node-RED: 5.0.0\n- Dashboard: @flowfuse/node-red-dashboard v1.30.2 (Dashboard 2.0)\n\n## Flows\n1. **MQTT Event Monitor** — Subscribe smartlab/events, tampilkan BORROW_CREATED & RETURN_CONFIRMED\n2. **Heartbeat & Device Status** — Subscribe smartlab/heartbeat, monitor ESP32-S3 online/offline\n3. **Stats Polling** — Poll GET /api/stats/overview setiap 10 detik, tampilkan gauge & text\n4. **Activity Feed** — Poll GET /api/stats/activity?limit=10 setiap 15 detik, tampilkan tabel\n5. **Manual Admin Actions** — Tombol Refresh Stats untuk trigger manual\n\n## Setup\n1. Pastikan MQTT broker berjalan di localhost:1883\n2. Pastikan backend API berjalan di http://127.0.0.1:3001\n3. Ganti `ADMIN_TOKEN` pada node 'Set Auth Header' dengan JWT token admin yang valid\n4. Import file ini ke Node-RED via menu → Import → Clipboard\n5. Deploy dan buka Dashboard di http://localhost:1880/dashboard",
+        "x": 280,
+        "y": 40,
+        "wires": []
+    },
+
+    {
+        "id": "ui-base-smartlab",
+        "type": "ui-base",
+        "name": "SmartLab Dashboard",
+        "path": "/dashboard",
+        "appIcon": "",
+        "colour": "",
+        "showPathInSidebar": false
+    },
+    {
+        "id": "ui-theme-default",
+        "type": "ui-theme",
+        "name": "SmartLab Theme",
+        "colors": {
+            "surface": "#1e1e2e",
+            "primary": "#89b4fa",
+            "bgPage": "#11111b",
+            "groupBg": "#181825",
+            "groupOutline": "#313244"
+        },
+        "sizes": {
+            "pagePadding": "12px",
+            "groupGap": "12px",
+            "groupBorderRadius": "8px",
+            "widgetGap": "6px"
+        }
+    },
+
+    {
+        "id": "ui-page-main",
+        "type": "ui-page",
+        "name": "SmartLab Monitor",
+        "ui": "ui-base-smartlab",
+        "path": "/main",
+        "icon": "mdi-monitor-dashboard",
+        "layout": "grid",
+        "theme": "ui-theme-default",
+        "order": 1,
+        "className": ""
+    },
+
+    {
+        "id": "ui-group-events",
+        "type": "ui-group",
+        "name": "📡 MQTT Events",
+        "page": "ui-page-main",
+        "width": "6",
+        "height": "1",
+        "order": 1,
+        "showTitle": true,
+        "className": ""
+    },
+    {
+        "id": "ui-group-device",
+        "type": "ui-group",
+        "name": "🖥️ Device Status",
+        "page": "ui-page-main",
+        "width": "6",
+        "height": "1",
+        "order": 2,
+        "showTitle": true,
+        "className": ""
+    },
+    {
+        "id": "ui-group-stats",
+        "type": "ui-group",
+        "name": "📊 Statistics",
+        "page": "ui-page-main",
+        "width": "6",
+        "height": "1",
+        "order": 3,
+        "showTitle": true,
+        "className": ""
+    },
+    {
+        "id": "ui-group-activity",
+        "type": "ui-group",
+        "name": "📋 Activity Feed",
+        "page": "ui-page-main",
+        "width": "12",
+        "height": "1",
+        "order": 4,
+        "showTitle": true,
+        "className": ""
+    },
+    {
+        "id": "ui-group-admin",
+        "type": "ui-group",
+        "name": "⚙️ Admin Actions",
+        "page": "ui-page-main",
+        "width": "6",
+        "height": "1",
+        "order": 5,
+        "showTitle": true,
+        "className": ""
+    },
+
+    {
+        "id": "mqtt-broker-local",
+        "type": "mqtt-broker",
+        "name": "Local MQTT Broker",
+        "broker": "127.0.0.1",
+        "port": "1883",
+        "clientid": "nodered-smartlab-dashboard",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "closeTopic": "",
+        "willTopic": "",
+        "birthQos": "0",
+        "closeQos": "0",
+        "willQos": "0",
+        "birthPayload": "",
+        "closePayload": "",
+        "willPayload": "",
+        "birthMsg": {},
+        "closeMsg": {},
+        "willMsg": {},
+        "sessionExpiry": ""
+    },
+
+    {
+        "id": "flow-events",
+        "type": "tab",
+        "label": "Flow 1 — MQTT Event Monitor",
+        "disabled": false,
+        "info": "Subscribe ke smartlab/events dan tampilkan notifikasi untuk BORROW_CREATED dan RETURN_CONFIRMED"
+    },
+
+    {
+        "id": "node-comment-flow1",
+        "type": "comment",
+        "z": "flow-events",
+        "name": "🔔 Flow 1 — MQTT Event Monitor: Subscribe smartlab/events, parse JSON, switch by event type, display notifications",
+        "info": "",
+        "x": 420,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "node-mqtt-events",
+        "type": "mqtt in",
+        "z": "flow-events",
+        "name": "MQTT: smartlab/events",
+        "topic": "smartlab/events",
+        "qos": "1",
+        "datatype": "utf8",
+        "broker": "mqtt-broker-local",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 160,
+        "y": 200,
+        "wires": [
+            ["node-parse-event"]
+        ]
+    },
+    {
+        "id": "node-parse-event",
+        "type": "function",
+        "z": "flow-events",
+        "name": "Parse Event JSON",
+        "func": "try {\n    const data = (typeof msg.payload === 'string') ? JSON.parse(msg.payload) : msg.payload;\n    msg.payload = data;\n    msg.event = data.event;\n    msg.timestamp = data.timestamp;\n    msg.eventData = data.data;\n    return msg;\n} catch (e) {\n    node.warn('Failed to parse event JSON: ' + e.message);\n    return null;\n}",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 200,
+        "wires": [
+            ["node-switch-event"]
+        ]
+    },
+    {
+        "id": "node-switch-event",
+        "type": "switch",
+        "z": "flow-events",
+        "name": "Switch Event Type",
+        "property": "event",
+        "propertyType": "msg",
+        "rules": [
+            { "t": "eq", "v": "BORROW_CREATED", "vt": "str" },
+            { "t": "eq", "v": "RETURN_CONFIRMED", "vt": "str" }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 610,
+        "y": 200,
+        "wires": [
+            ["node-format-borrow"],
+            ["node-format-return"]
+        ]
+    },
+    {
+        "id": "node-format-borrow",
+        "type": "function",
+        "z": "flow-events",
+        "name": "Format Borrow Event",
+        "func": "const d = msg.eventData;\nconst ts = new Date(msg.timestamp).toLocaleTimeString('id-ID');\nmsg.payload = `🟢 BORROW — Session #${d.session_id} | User ID: ${d.user_id} | ${d.asset_count} asset(s) | ${ts}`;\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 860,
+        "y": 160,
+        "wires": [
+            ["node-ui-event-text", "node-notif-borrow"]
+        ]
+    },
+    {
+        "id": "node-format-return",
+        "type": "function",
+        "z": "flow-events",
+        "name": "Format Return Event",
+        "func": "const d = msg.eventData;\nconst ts = new Date(msg.timestamp).toLocaleTimeString('id-ID');\nmsg.payload = `🔵 RETURN — Session #${d.session_id} | ${d.returned_count} item(s) returned | Status: ${d.new_status} | ${ts}`;\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 860,
+        "y": 240,
+        "wires": [
+            ["node-ui-event-text", "node-notif-return"]
+        ]
+    },
+    {
+        "id": "node-ui-event-text",
+        "type": "ui-text",
+        "z": "flow-events",
+        "group": "ui-group-events",
+        "name": "Event Display",
+        "order": 1,
+        "width": "6",
+        "height": "1",
+        "label": "Latest Event",
+        "format": "{{msg.payload}}",
+        "layout": "row-left",
+        "style": false,
+        "font": "14px",
+        "color": "#cdd6f4",
+        "className": "",
+        "x": 1120,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "node-notif-borrow",
+        "type": "ui-notification",
+        "z": "flow-events",
+        "ui": "ui-base-smartlab",
+        "position": "top right",
+        "colorDefault": true,
+        "color": "#a6e3a1",
+        "displayTime": "5",
+        "showCountdown": true,
+        "dismiss": "auto",
+        "allowDismiss": true,
+        "raw": false,
+        "className": "",
+        "name": "Notif: Borrow Created",
+        "x": 1130,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "node-notif-return",
+        "type": "ui-notification",
+        "z": "flow-events",
+        "ui": "ui-base-smartlab",
+        "position": "top right",
+        "colorDefault": false,
+        "color": "#89b4fa",
+        "displayTime": "5",
+        "showCountdown": true,
+        "dismiss": "auto",
+        "allowDismiss": true,
+        "raw": false,
+        "className": "",
+        "name": "Notif: Return Confirmed",
+        "x": 1140,
+        "y": 260,
+        "wires": []
+    },
+
+    {
+        "id": "flow-heartbeat",
+        "type": "tab",
+        "label": "Flow 2 — Heartbeat & Device Status",
+        "disabled": false,
+        "info": "Monitor ESP32-S3 heartbeat. Jika tidak ada heartbeat >60 detik → tampilkan OFFLINE"
+    },
+
+    {
+        "id": "node-comment-flow2",
+        "type": "comment",
+        "z": "flow-heartbeat",
+        "name": "💓 Flow 2 — Heartbeat: Subscribe smartlab/heartbeat, parse state, show device status, trigger OFFLINE after 60s timeout",
+        "info": "",
+        "x": 460,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "node-mqtt-heartbeat",
+        "type": "mqtt in",
+        "z": "flow-heartbeat",
+        "name": "MQTT: smartlab/heartbeat",
+        "topic": "smartlab/heartbeat",
+        "qos": "0",
+        "datatype": "utf8",
+        "broker": "mqtt-broker-local",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 170,
+        "y": 140,
+        "wires": [
+            ["node-parse-heartbeat"]
+        ]
+    },
+    {
+        "id": "node-parse-heartbeat",
+        "type": "function",
+        "z": "flow-heartbeat",
+        "name": "Parse Heartbeat & Format Status",
+        "func": "try {\n    const data = (typeof msg.payload === 'string') ? JSON.parse(msg.payload) : msg.payload;\n    const state = data.state || 'UNKNOWN';\n    const status = data.status || 'ok';\n    const ts = data.ts ? new Date(data.ts * 1000).toLocaleTimeString('id-ID') : new Date().toLocaleTimeString('id-ID');\n\n    msg.payload = `✅ Device: ONLINE — State: ${state} | Status: ${status} | Last: ${ts}`;\n    msg.deviceOnline = true;\n    return msg;\n} catch (e) {\n    node.warn('Failed to parse heartbeat: ' + e.message);\n    return null;\n}",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 450,
+        "y": 140,
+        "wires": [
+            ["node-ui-device-status", "node-heartbeat-trigger"]
+        ]
+    },
+    {
+        "id": "node-ui-device-status",
+        "type": "ui-text",
+        "z": "flow-heartbeat",
+        "group": "ui-group-device",
+        "name": "Device Status Display",
+        "order": 1,
+        "width": "6",
+        "height": "1",
+        "label": "ESP32-S3 Terminal",
+        "format": "{{msg.payload}}",
+        "layout": "row-left",
+        "style": false,
+        "font": "14px",
+        "color": "#cdd6f4",
+        "className": "",
+        "x": 780,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "node-heartbeat-trigger",
+        "type": "trigger",
+        "z": "flow-heartbeat",
+        "name": "Timeout 60s → OFFLINE",
+        "op1": "",
+        "op2": "❌ Device: OFFLINE — No heartbeat received for >60 seconds",
+        "op1type": "nul",
+        "op2type": "str",
+        "duration": "60",
+        "extend": true,
+        "overrideDelay": false,
+        "units": "s",
+        "reset": "",
+        "bytopic": "all",
+        "topic": "topic",
+        "outputs": 1,
+        "x": 790,
+        "y": 180,
+        "wires": [
+            ["node-ui-device-status"]
+        ]
+    },
+
+    {
+        "id": "flow-stats",
+        "type": "tab",
+        "label": "Flow 3 — Stats Polling",
+        "disabled": false,
+        "info": "Poll GET /api/stats/overview setiap 10 detik dan tampilkan gauge + text di dashboard"
+    },
+
+    {
+        "id": "node-comment-flow3",
+        "type": "comment",
+        "z": "flow-stats",
+        "name": "📊 Flow 3 — Stats Polling: Inject 10s → Auth Header → HTTP GET /api/stats/overview → Parse → Gauge & Text widgets",
+        "info": "",
+        "x": 440,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "node-inject-stats",
+        "type": "inject",
+        "z": "flow-stats",
+        "name": "Every 10 seconds",
+        "props": [
+            { "p": "payload" },
+            { "p": "topic", "vt": "str" }
+        ],
+        "repeat": "10",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "2",
+        "topic": "stats",
+        "payload": "",
+        "payloadType": "date",
+        "x": 160,
+        "y": 160,
+        "wires": [
+            ["node-set-auth-stats"]
+        ]
+    },
+    {
+        "id": "node-link-in-stats",
+        "type": "link in",
+        "z": "flow-stats",
+        "name": "Link In: Trigger Stats",
+        "links": ["node-link-out-refresh"],
+        "x": 155,
+        "y": 240,
+        "wires": [
+            ["node-set-auth-stats"]
+        ]
+    },
+    {
+        "id": "node-set-auth-stats",
+        "type": "function",
+        "z": "flow-stats",
+        "name": "Set Auth Header (Stats)",
+        "func": "// ╔══════════════════════════════════════════════════════╗\n// ║  GANTI TOKEN DI BAWAH DENGAN JWT ADMIN YANG VALID  ║\n// ╚══════════════════════════════════════════════════════╝\nconst ADMIN_TOKEN = 'ADMIN_TOKEN';\n\nmsg.headers = {\n    'Authorization': 'Bearer ' + ADMIN_TOKEN,\n    'Content-Type': 'application/json'\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 160,
+        "wires": [
+            ["node-http-stats"]
+        ]
+    },
+    {
+        "id": "node-http-stats",
+        "type": "http request",
+        "z": "flow-stats",
+        "name": "GET /api/stats/overview",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "http://127.0.0.1:3001/api/stats/overview",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 660,
+        "y": 160,
+        "wires": [
+            ["node-parse-stats"]
+        ]
+    },
+    {
+        "id": "node-parse-stats",
+        "type": "function",
+        "z": "flow-stats",
+        "name": "Parse Stats Response",
+        "func": "try {\n    const body = (typeof msg.payload === 'string') ? JSON.parse(msg.payload) : msg.payload;\n    const stats = body.data;\n\n    if (!stats) {\n        node.warn('No data in stats response');\n        return null;\n    }\n\n    // Output 1: Available Assets (for gauge)\n    const msg1 = { payload: stats.available_assets, total: stats.total_assets };\n    // Output 2: Active Sessions\n    const msg2 = { payload: `🔄 ${stats.active_sessions}` };\n    // Output 3: Borrows Today\n    const msg3 = { payload: `📦 ${stats.borrows_today}` };\n    // Output 4: Total Assets label\n    const msg4 = { payload: `🏷️ ${stats.total_assets}` };\n    // Output 5: Borrows This Week\n    const msg5 = { payload: `📅 ${stats.borrows_this_week}` };\n\n    return [msg1, msg2, msg3, msg4, msg5];\n} catch (e) {\n    node.warn('Failed to parse stats: ' + e.message);\n    return [null, null, null, null, null];\n}",
+        "outputs": 5,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 900,
+        "y": 160,
+        "wires": [
+            ["node-ui-gauge-available"],
+            ["node-ui-text-active"],
+            ["node-ui-text-borrows-today"],
+            ["node-ui-text-total"],
+            ["node-ui-text-borrows-week"]
+        ]
+    },
+    {
+        "id": "node-ui-gauge-available",
+        "type": "ui-gauge",
+        "z": "flow-stats",
+        "name": "Gauge: Available Assets",
+        "group": "ui-group-stats",
+        "order": 1,
+        "width": "3",
+        "height": "4",
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "Available Assets",
+        "units": "units",
+        "icon": "",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            { "from": "0", "color": "#f38ba8" },
+            { "from": "5", "color": "#f9e2af" },
+            { "from": "15", "color": "#a6e3a1" }
+        ],
+        "min": 0,
+        "max": "50",
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": 8,
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 1160,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "node-ui-text-active",
+        "type": "ui-text",
+        "z": "flow-stats",
+        "group": "ui-group-stats",
+        "name": "Text: Active Sessions",
+        "order": 2,
+        "width": "3",
+        "height": "1",
+        "label": "Active Sessions",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "style": false,
+        "font": "16px",
+        "color": "#f9e2af",
+        "className": "",
+        "x": 1160,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "node-ui-text-borrows-today",
+        "type": "ui-text",
+        "z": "flow-stats",
+        "group": "ui-group-stats",
+        "name": "Text: Borrows Today",
+        "order": 3,
+        "width": "3",
+        "height": "1",
+        "label": "Borrows Today",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "style": false,
+        "font": "16px",
+        "color": "#89b4fa",
+        "className": "",
+        "x": 1160,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "node-ui-text-total",
+        "type": "ui-text",
+        "z": "flow-stats",
+        "group": "ui-group-stats",
+        "name": "Text: Total Assets",
+        "order": 4,
+        "width": "3",
+        "height": "1",
+        "label": "Total Assets",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "style": false,
+        "font": "16px",
+        "color": "#cba6f7",
+        "className": "",
+        "x": 1150,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "node-ui-text-borrows-week",
+        "type": "ui-text",
+        "z": "flow-stats",
+        "group": "ui-group-stats",
+        "name": "Text: Borrows This Week",
+        "order": 5,
+        "width": "3",
+        "height": "1",
+        "label": "Borrows This Week",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "style": false,
+        "font": "16px",
+        "color": "#94e2d5",
+        "className": "",
+        "x": 1170,
+        "y": 300,
+        "wires": []
+    },
+
+    {
+        "id": "flow-activity",
+        "type": "tab",
+        "label": "Flow 4 — Activity Feed",
+        "disabled": false,
+        "info": "Poll GET /api/stats/activity?limit=10 setiap 15 detik dan tampilkan sebagai tabel HTML"
+    },
+
+    {
+        "id": "node-comment-flow4",
+        "type": "comment",
+        "z": "flow-activity",
+        "name": "📋 Flow 4 — Activity Feed: Inject 15s → Auth Header → HTTP GET /api/stats/activity → Parse → HTML Table",
+        "info": "",
+        "x": 420,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "node-inject-activity",
+        "type": "inject",
+        "z": "flow-activity",
+        "name": "Every 15 seconds",
+        "props": [
+            { "p": "payload" },
+            { "p": "topic", "vt": "str" }
+        ],
+        "repeat": "15",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "3",
+        "topic": "activity",
+        "payload": "",
+        "payloadType": "date",
+        "x": 160,
+        "y": 140,
+        "wires": [
+            ["node-set-auth-activity"]
+        ]
+    },
+    {
+        "id": "node-set-auth-activity",
+        "type": "function",
+        "z": "flow-activity",
+        "name": "Set Auth Header (Activity)",
+        "func": "// ╔══════════════════════════════════════════════════════╗\n// ║  GANTI TOKEN DI BAWAH DENGAN JWT ADMIN YANG VALID  ║\n// ╚══════════════════════════════════════════════════════╝\nconst ADMIN_TOKEN = 'ADMIN_TOKEN';\n\nmsg.headers = {\n    'Authorization': 'Bearer ' + ADMIN_TOKEN,\n    'Content-Type': 'application/json'\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 140,
+        "wires": [
+            ["node-http-activity"]
+        ]
+    },
+    {
+        "id": "node-http-activity",
+        "type": "http request",
+        "z": "flow-activity",
+        "name": "GET /api/stats/activity?limit=10",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "http://127.0.0.1:3001/api/stats/activity?limit=10",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 700,
+        "y": 140,
+        "wires": [
+            ["node-parse-activity"]
+        ]
+    },
+    {
+        "id": "node-parse-activity",
+        "type": "function",
+        "z": "flow-activity",
+        "name": "Parse Activity → HTML Table",
+        "func": "try {\n    const body = (typeof msg.payload === 'string') ? JSON.parse(msg.payload) : msg.payload;\n    const rows = body.data;\n\n    if (!rows || rows.length === 0) {\n        msg.payload = '<p style=\"color:#6c7086;text-align:center;padding:20px;\">No recent activity</p>';\n        return msg;\n    }\n\n    let html = `\n    <style>\n        .activity-table {\n            width: 100%;\n            border-collapse: collapse;\n            font-family: 'Segoe UI', sans-serif;\n            font-size: 13px;\n        }\n        .activity-table th {\n            background: #313244;\n            color: #cdd6f4;\n            padding: 10px 12px;\n            text-align: left;\n            font-weight: 600;\n            border-bottom: 2px solid #45475a;\n        }\n        .activity-table td {\n            padding: 8px 12px;\n            border-bottom: 1px solid #313244;\n            color: #bac2de;\n        }\n        .activity-table tr:hover td {\n            background: #1e1e2e;\n        }\n        .badge-borrow {\n            background: #a6e3a1; color: #1e1e2e;\n            padding: 2px 8px; border-radius: 4px;\n            font-weight: 600; font-size: 11px;\n        }\n        .badge-return {\n            background: #89b4fa; color: #1e1e2e;\n            padding: 2px 8px; border-radius: 4px;\n            font-weight: 600; font-size: 11px;\n        }\n    </style>\n    <table class=\"activity-table\">\n        <thead>\n            <tr>\n                <th>Type</th>\n                <th>User</th>\n                <th>NRP</th>\n                <th>Items</th>\n                <th>Time</th>\n            </tr>\n        </thead>\n        <tbody>`;\n\n    rows.forEach(row => {\n        const badgeClass = row.type === 'BORROW' ? 'badge-borrow' : 'badge-return';\n        const icon = row.type === 'BORROW' ? '📦' : '↩️';\n        const ts = new Date(row.timestamp).toLocaleString('id-ID', {\n            day: '2-digit', month: 'short', year: 'numeric',\n            hour: '2-digit', minute: '2-digit'\n        });\n\n        html += `\n            <tr>\n                <td><span class=\"${badgeClass}\">${icon} ${row.type}</span></td>\n                <td>${row.user_name}</td>\n                <td>${row.user_nrp}</td>\n                <td style=\"text-align:center;\">${row.item_count}</td>\n                <td>${ts}</td>\n            </tr>`;\n    });\n\n    html += `\n        </tbody>\n    </table>`;\n\n    msg.payload = html;\n    return msg;\n} catch (e) {\n    node.warn('Failed to parse activity: ' + e.message);\n    msg.payload = '<p style=\"color:#f38ba8;\">Error loading activity data</p>';\n    return msg;\n}",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 960,
+        "y": 140,
+        "wires": [
+            ["node-ui-activity-table"]
+        ]
+    },
+    {
+        "id": "node-ui-activity-table",
+        "type": "ui-template",
+        "z": "flow-activity",
+        "group": "ui-group-activity",
+        "name": "Activity Table (HTML)",
+        "order": 1,
+        "width": "12",
+        "height": "6",
+        "head": "",
+        "format": "<div v-html=\"msg.payload\" style=\"max-height:400px;overflow-y:auto;\"></div>",
+        "storeOutMessages": true,
+        "passthru": false,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1220,
+        "y": 140,
+        "wires": [[]]
+    },
+
+    {
+        "id": "flow-admin",
+        "type": "tab",
+        "label": "Flow 5 — Manual Admin Actions",
+        "disabled": false,
+        "info": "Tombol manual admin untuk trigger refresh stats dan operasi lainnya"
+    },
+
+    {
+        "id": "node-comment-flow5",
+        "type": "comment",
+        "z": "flow-admin",
+        "name": "⚙️ Flow 5 — Manual Admin Actions: Dashboard buttons to manually trigger stats refresh and other admin operations",
+        "info": "",
+        "x": 440,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "node-ui-btn-refresh",
+        "type": "ui-button",
+        "z": "flow-admin",
+        "group": "ui-group-admin",
+        "name": "Button: Refresh Stats",
+        "order": 1,
+        "width": "3",
+        "height": "1",
+        "passthru": false,
+        "label": "🔄 Refresh Stats",
+        "tooltip": "Manually trigger stats refresh from the API",
+        "color": "#1e1e2e",
+        "bgcolor": "#89b4fa",
+        "className": "",
+        "icon": "mdi-refresh",
+        "payload": "refresh",
+        "payloadType": "str",
+        "topic": "admin",
+        "textColor": "#1e1e2e",
+        "x": 170,
+        "y": 140,
+        "wires": [
+            ["node-link-out-refresh", "node-notif-refresh"]
+        ]
+    },
+    {
+        "id": "node-link-out-refresh",
+        "type": "link out",
+        "z": "flow-admin",
+        "name": "Link Out: Trigger Stats Polling",
+        "mode": "link",
+        "links": ["node-link-in-stats"],
+        "x": 445,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "node-notif-refresh",
+        "type": "function",
+        "z": "flow-admin",
+        "name": "Refresh Notification",
+        "func": "msg.payload = '🔄 Stats refresh triggered manually';\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 220,
+        "wires": [
+            ["node-notif-refresh-ui"]
+        ]
+    },
+    {
+        "id": "node-notif-refresh-ui",
+        "type": "ui-notification",
+        "z": "flow-admin",
+        "ui": "ui-base-smartlab",
+        "position": "bottom right",
+        "colorDefault": false,
+        "color": "#89b4fa",
+        "displayTime": "3",
+        "showCountdown": false,
+        "dismiss": "auto",
+        "allowDismiss": true,
+        "raw": false,
+        "className": "",
+        "name": "Notif: Refresh Triggered",
+        "x": 700,
+        "y": 220,
+        "wires": []
+    }
+]
