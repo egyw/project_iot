@@ -15,7 +15,7 @@ ON CONFLICT (id) DO NOTHING;
 -- Aset 1 dan 4 sedang dipinjam (is_available = false)
 INSERT INTO assets (id, asset_type_id, rfid_uid, label, is_available) VALUES
 (1, 1, '5a81f1f7544189', 'Bolpen Coklat', false),
-(2, 1, '5ad17cf1544189', 'Bolpen Hitam', true),
+(2, 1, '77522164', 'Bolpen Hitam', true),
 (3, 2, '5ac1a0ef544189', 'Freshcare Matcha', true),
 (4, 3, '5a21d3f2544189', 'Stabilo Yellow', false),
 (5, 3, '5a81a4f4544189', 'Stabilo Orange', true),
