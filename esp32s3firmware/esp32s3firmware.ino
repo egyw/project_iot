@@ -389,7 +389,7 @@ void connectMQTT() {
 }
 
 // =============================================================================
-// MQTT CALLBACK
+// MQTT CALLBACK - bertugas mendengar pesan masuk dari server dan memecah isi pesannya (Parse JSON).
 // =============================================================================
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   Serial.print(F("[MQTT] Msg on: "));
@@ -417,7 +417,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 }
 
 // =============================================================================
-// MQTT RESPONSE HANDLERS
+// MQTT RESPONSE HANDLERS - menentukan apa yang harus dilakukan setelah server membalas
 // =============================================================================
 void handleKTMResponse(JsonDocument& doc) {
   waitingMqttResp = false;
@@ -759,7 +759,7 @@ void beepLong() {
 }
 
 // =============================================================================
-// STATE TRANSITION
+// STATE TRANSITION - perpindahan halaman
 // =============================================================================
 void transitionTo(AppState newState) {
   Serial.print(F("[STATE] "));
@@ -815,7 +815,7 @@ const char* stateNameString(AppState s) {
 }
 
 // =============================================================================
-// TIMEOUT CHECK
+// TIMEOUT CHECK - agar bisa balik ke halaman awal kalau terlalu lama diam
 // =============================================================================
 void checkStateTimeout() {
   unsigned long elapsed = millis() - stateEnteredAt;
@@ -991,7 +991,7 @@ void handleScroll() {
 }
 
 // =============================================================================
-// SUMMARY BUILDER (used by drawBorrowSummary & drawReturnSummary)
+// SUMMARY BUILDER (used by drawBorrowSummary & drawReturnSummary) - mengelompokan barang dengan nama yang sama
 // =============================================================================
 int buildBorrowSummary(SummaryEntry* entries, int maxEntries) {
   int count = 0;

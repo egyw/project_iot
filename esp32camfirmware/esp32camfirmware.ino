@@ -306,7 +306,7 @@ void captureAndUpload(const char* sessionToken) {
 }
 
 // ============================================================
-//  5. mqttCallback()
+//  5. mqttCallback() - kalau ada trigger yang menyuruh esp32cam untuk mengambil foto
 // ============================================================
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   Serial.printf("[MQTT] Message on topic: %s (%u bytes)\n", topic, length);
